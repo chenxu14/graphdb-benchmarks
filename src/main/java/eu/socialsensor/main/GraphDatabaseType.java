@@ -12,14 +12,7 @@ import java.util.Set;
  */
 public enum GraphDatabaseType
 {
-    TITAN_BERKELEYDB("Titan", "berkeleyje", "tbdb"),
-    TITAN_DYNAMODB("Titan", "com.amazon.titan.diskstorage.dynamodb.DynamoDBStoreManager", "tddb"),
-    TITAN_TUPL("Titan", "jp.classmethod.titan.diskstorage.tupl.TuplStoreManager", "ttupl"),
-    TITAN_CASSANDRA("Titan", "cassandra", "tc"),
-    TITAN_CASSANDRA_EMBEDDED("TitanEmbedded", "embeddedcassandra", "tce"),
-    TITAN_HBASE("Titan", "hbase", "thb"),
-    TITAN_PERSISTIT("TitanEmbedded", "inmemory", "ti"),
-    ORIENT_DB("OrientDB", null, "orient"),
+    JANUS_HBASE("Janus", "hbase", "jhb"),
     NEO4J("Neo4j", null, "neo4j");
 
     private final String backend;
@@ -27,20 +20,14 @@ public enum GraphDatabaseType
     private final String shortname;
 
     public static final Map<String, GraphDatabaseType> STRING_REP_MAP = new HashMap<String, GraphDatabaseType>();
-    public static final Set<GraphDatabaseType> TITAN_FLAVORS = new HashSet<GraphDatabaseType>();
+    public static final Set<GraphDatabaseType> JANUS_FLAVORS = new HashSet<GraphDatabaseType>();
     static
     {
         for (GraphDatabaseType db : values())
         {
             STRING_REP_MAP.put(db.getShortname(), db);
         }
-        TITAN_FLAVORS.add(TITAN_BERKELEYDB);
-        TITAN_FLAVORS.add(TITAN_TUPL);
-        TITAN_FLAVORS.add(TITAN_DYNAMODB);
-        TITAN_FLAVORS.add(TITAN_CASSANDRA);
-        TITAN_FLAVORS.add(TITAN_CASSANDRA_EMBEDDED);
-        TITAN_FLAVORS.add(TITAN_HBASE);
-        TITAN_FLAVORS.add(TITAN_PERSISTIT);
+        JANUS_FLAVORS.add(JANUS_HBASE);
     }
 
     private GraphDatabaseType(String api, String backend, String shortname)

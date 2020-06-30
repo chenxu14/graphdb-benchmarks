@@ -21,8 +21,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import eu.socialsensor.graphdatabases.GraphDatabase;
+import eu.socialsensor.graphdatabases.JanusGraphDatabase;
 import eu.socialsensor.graphdatabases.Neo4jGraphDatabase;
-import eu.socialsensor.graphdatabases.TitanGraphDatabase;
 import eu.socialsensor.main.BenchmarkConfiguration;
 import eu.socialsensor.main.BenchmarkingException;
 import eu.socialsensor.main.GraphDatabaseType;
@@ -182,9 +182,9 @@ public class Utils
     {
         final GraphDatabase<?,?,?,?> graphDatabase;
         final File dbStorageDirectory = generateStorageDirectory(type, config.getDbStorageDirectory());
-        if (GraphDatabaseType.TITAN_FLAVORS.contains(type))
+        if (GraphDatabaseType.JANUS_FLAVORS.contains(type))
         {
-            graphDatabase = new TitanGraphDatabase(type, config, dbStorageDirectory, batchLoading);
+            graphDatabase = new JanusGraphDatabase(type, config, dbStorageDirectory, batchLoading);
         }
         else if (GraphDatabaseType.NEO4J == type)
         {

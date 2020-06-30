@@ -1,0 +1,27 @@
+janus-benchmark
+
+graph = JanusGraphFactory.open('conf/janusgraph-hbase.properties')
+mgmt = graph.openManagement()
+
+mgmt.makeVertexLabel("node").make()
+mgmt.makeEdgeLabel("similar").multiplicity(Multiplicity.MULTI).directed().make()
+
+i = mgmt.makePropertyKey("nodeId").dataType(Integer.class).make()
+mgmt.buildIndex("nodeIdIndex", Vertex.class).addKey(i).unique().buildCompositeIndex()
+
+i = mgmt.makePropertyKey("community").dataType(Integer.class).make()
+mgmt.buildIndex("communityIndex", Vertex.class).addKey(i).buildCompositeIndex()
+
+i = mgmt.makePropertyKey("nodeCommunity").dataType(Integer.class).make()
+mgmt.buildIndex("nodeCommunityIndex", Vertex.class).addKey(i).buildCompositeIndex()
+
+mgmt.commit()
+
+
+g = graph.traversal()
+
+g.V().has("nodeId", 13122).repeat(both().simplePath()).until(has('nodeId',29854).and().filter {it.path().size() <= 6}).limit(1).path().by('nodeId')
+
+g.V().has("nodeId", 775).repeat(out('similar').simplePath()).until(has('nodeId', 990).and().filter {it.path().size() <= 6}).limit(1).path().by('nodeId')
+
+g.V().has("nodeId", 775).repeat(out("similar").simplePath()).until(loops().is(5)).emit(has("nodeId", 990)).has("nodeId", 990).limit(1).path().by("nodeId")

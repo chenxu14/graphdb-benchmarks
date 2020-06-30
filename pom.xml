@@ -1,32 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>eu.socialsensor</groupId>
     <artifactId>graphdb-benchmarks</artifactId>
     <version>1.0</version>
+    <packaging>jar</packaging>
 
     <name>graphdb-benchmarks</name>
     <url>https://github.com/socialsensor/graphdb-benchmarks</url>
     <description>Performance benchmark between popular graph databases.</description>
-
-    <organization>
-        <name>SocialSensor</name>
-        <url>http://www.socialsensor.eu/</url>
-    </organization>
-
-    <developers>
-        <developer>
-            <id>sarovios</id>
-            <name>Sotiris Beis</name>
-            <email>sotbeis@iti.gr</email>
-        </developer>
-        <developer>
-            <id>amcp</id>
-            <name>Alexander Patrikalakis</name>
-            <email>amcp@me.com</email>
-        </developer>
-    </developers>
 
     <licenses>
         <license>
@@ -36,27 +18,16 @@
         </license>
     </licenses>
 
-    <scm>
-        <connection>scm:git:git@github.com:socialsensor/graphdb-benchmarks.git</connection>
-        <developerConnection>scm:git:git@github.com:socialsensor/graphdb-benchmarks.git</developerConnection>
-        <url>git@github.com:socialsensor/graphdb-benchmarks.git</url>
-        <tag>graphdb-benchmarks-1.0</tag>
-    </scm>
-
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <tinkerpop.version>3.4.6</tinkerpop.version>
-        <titan.version>1.0.0</titan.version>
         <hbase.version>1.4.1</hbase.version>
         <neo4j.version>2.3.2</neo4j.version>
-        <dynamodb.titan.version>1.0.0</dynamodb.titan.version>
         <log4j2.version>2.1</log4j2.version>
         <maven.dependency.version>2.10</maven.dependency.version>
         <maven.surefire.version>2.19.1</maven.surefire.version>
         <maven.assembly.version>2.6</maven.assembly.version>
         <jdk.version>1.8</jdk.version>
-        <!-- Force the AWS SDK version otherwise titan-dynamodb takes forever to download a range of SDK versions -->
-        <!-- <aws.java.sdk.version>1.10.64</aws.java.sdk.version> -->
-        <aws.java.sdk.version>1.10.57</aws.java.sdk.version>
     </properties>
 
     <dependencies>
@@ -76,16 +47,6 @@
             <version>3.4.1</version>
         </dependency>
         <dependency>
-            <groupId>commons-configuration</groupId>
-            <artifactId>commons-configuration</artifactId>
-            <version>1.6</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.3.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
             <version>${log4j2.version}</version>
@@ -99,16 +60,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>1.7.12</version>
-        </dependency>
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-core</artifactId>
-            <version>3.6.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tinkerpop</groupId>
@@ -126,39 +77,9 @@
             <version>${neo4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.tinkerpop</groupId>
-            <artifactId>gremlin-core</artifactId>
-            <version>${tinkerpop.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.thinkaurelius.titan</groupId>
-            <artifactId>titan-berkeleyje</artifactId>
-            <version>${titan.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.thinkaurelius.titan</groupId>
-            <artifactId>titan-cassandra</artifactId>
-            <version>${titan.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.thinkaurelius.titan</groupId>
-            <artifactId>titan-hbase</artifactId>
-            <version>${titan.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.meituan.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${hbase.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>dynamodb-titan100-storage-backend</artifactId>
-            <version>${dynamodb.titan.version}</version>
-        </dependency>
-        <dependency>
-           <groupId>jp.classmethod</groupId>
-            <artifactId>tupl-titan100-storage-backend</artifactId>
-            <version>1.0.1</version>
+            <groupId>org.chen.janusgraph</groupId>
+            <artifactId>janusgraph-client</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -168,198 +89,41 @@
         </dependency>
     </dependencies>
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-release-plugin</artifactId>
-                    <version>2.5</version>
-                    <configuration>
-                        <useReleaseProfile>false</useReleaseProfile>
-                        <releaseProfiles>release</releaseProfiles>
-                        <goals>deploy</goals>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-clean-plugin</artifactId>
-                    <version>2.6.1</version>
-                    <configuration>
-                        <filesets>
-                            <fileset>
-                                <directory>${basedir}</directory>
-                                <includes>
-                                    <include>**/storage</include>
-                                    <include>**/results</include>
-                                </includes>
-                                <followSymlinks>false</followSymlinks>
-                            </fileset>
-                        </filesets>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>1.6.6</version>
-                    <extensions>true</extensions>
-                    <configuration>
-                        <serverId>sonatype-nexus-staging</serverId>
-                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                        <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.2</version>
-                    <configuration>
-                        <source>${jdk.version}</source>
-                        <target>${jdk.version}</target>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>2.4</version>
-                    <executions>
-                        <execution>
-                            <id>attach-sources</id>
-                            <goals>
-                                <goal>jar-no-fork</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.10.1</version>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <goals>
-                                <goal>jar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <version>2.8</version>
-                    <executions>
-                        <execution>
-                            <id>copy-dependencies</id>
-                            <phase>process-test-resources</phase>
-                            <goals>
-                                <goal>copy-dependencies</goal>
-                            </goals>
-                            <configuration>
-                                <outputDirectory>${project.build.directory}/dependencies</outputDirectory>
-                                <overWriteReleases>false</overWriteReleases>
-                                <overWriteSnapshots>false</overWriteSnapshots>
-                                <overWriteIfNewer>true</overWriteIfNewer>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${maven.surefire.version}</version>
-                    <configuration>
-                        <skip>true</skip>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.5</version>
-                    <executions>
-                        <execution>
-                            <id>sign-artifacts</id>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>sign</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <inherited>true</inherited>
+                <extensions>true</extensions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>share</id>
-            <activation>
-                <file>
-                    <exists>src/assembly/component.xml</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${maven.assembly.version}</version>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/component.xml</descriptor>
-                            </descriptors>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                                <phase>package</phase> <!-- bind to the packaging phase -->
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>bench</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <version>${maven.surefire.version}</version>
-                        <executions>
-                            <execution>
-                                <phase>test</phase>
-                                <goals>
-                                    <goal>test</goal>
-                                </goals>
-                                <configuration>
-                                    <includes>
-                                        <include>**/GraphDatabaseBenchmarkTest.java</include>
-                                    </includes>
-                                    <argLine>-Xmx32g -ea</argLine>
-                                    <skip>false</skip>
-                                    <systemPropertyVariables>
-                                        <log4j.configurationFile>${basedir}/src/test/resources/META-INF/log4j2.xml</log4j.configurationFile>
-                                    </systemPropertyVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>aws-java-sdk-dynamodb</artifactId>
-                <version>${aws.java.sdk.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.amazonaws</groupId>
-                <artifactId>DynamoDBLocal</artifactId>
-                <version>${aws.java.sdk.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 </project>

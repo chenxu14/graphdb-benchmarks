@@ -8,17 +8,11 @@ import java.util.Random;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.math3.util.CombinatoricsUtils;
-
-import com.amazon.titan.diskstorage.dynamodb.BackendDataModel;
-import com.amazon.titan.diskstorage.dynamodb.Constants;
+import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
 import com.google.common.primitives.Ints;
-import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
-
 import eu.socialsensor.dataset.DatasetFactory;
-import jp.classmethod.titan.diskstorage.tupl.TuplStoreManager;
 
 /**
  * 
@@ -27,8 +21,8 @@ import jp.classmethod.titan.diskstorage.tupl.TuplStoreManager;
  */
 public class BenchmarkConfiguration
 {
-    // Titan specific configuration
-    private static final String TITAN = "titan";
+    // Janus specific configuration
+    private static final String JANUS = "janus";
     private static final String BUFFER_SIZE = GraphDatabaseConfiguration.BUFFER_SIZE.getName();
     private static final String IDS_BLOCKSIZE = GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getName();
     private static final String PAGE_SIZE = GraphDatabaseConfiguration.PAGE_SIZE.getName();
@@ -38,15 +32,6 @@ public class BenchmarkConfiguration
     public static final String GRAPHITE = GraphDatabaseConfiguration.METRICS_GRAPHITE_NS.getName();
     private static final String GRAPHITE_HOSTNAME = GraphDatabaseConfiguration.GRAPHITE_HOST.getName();
     private static final String CUSTOM_IDS = "custom-ids";
-
-    // DynamoDB Storage Backend for Titan specific configuration
-    private static final String CONSTRUCTOR_ARGS = Constants.DYNAMODB_CREDENTIALS_CONSTRUCTOR_ARGS.getName();
-    private static final String CLASS_NAME = Constants.DYNAMODB_CREDENTIALS_CLASS_NAME.getName();
-    private static final String CONSISTENT_READ = Constants.DYNAMODB_FORCE_CONSISTENT_READ.getName();
-    private static final String TPS = "tps";
-    private static final String CREDENTIALS = Constants.DYNAMODB_CLIENT_CREDENTIALS_NAMESPACE.getName();
-    private static final String ENDPOINT = Constants.DYNAMODB_CLIENT_ENDPOINT.getName();
-    private static final String TABLE_PREFIX = Constants.DYNAMODB_TABLE_PREFIX.getName();
 
     // benchmark configuration
     private static final String DATASET = "dataset";
@@ -79,51 +64,21 @@ public class BenchmarkConfiguration
     private final String graphiteHostname;
     private final long graphiteReportingInterval;
 
-    // storage backend specific settings
-    private final long dynamodbTps;
-    private final BackendDataModel dynamodbDataModel;
-    private final boolean dynamodbConsistentRead;
-
     // shortest path
     private final int numShortestPathRandomNodes;
 
     // clustering
     private final Boolean randomizedClustering;
-    private final Integer cacheValuesCount;
-    private final Double cacheIncrementFactor;
     private final List<Integer> cachePercentages;
     private final File actualCommunities;
     private final boolean permuteBenchmarks;
     private final int scenarios;
-    private final String dynamodbCredentialsFqClassName;
-    private final String dynamodbCredentialsCtorArguments;
-    private final String dynamodbEndpoint;
     private final int bufferSize;
     private final int blocksize;
     private final int pageSize;
-    private final int dynamodbWorkerThreads;
-    private final boolean dynamodbPrecreateTables;
-    private final String dynamodbTablePrefix;
     private final boolean customIds;
-    private final long tuplMinCacheSize;
     private final int shortestPathMaxHops;
-
     private final Random random;
-
-    public String getDynamodbCredentialsFqClassName()
-    {
-        return dynamodbCredentialsFqClassName;
-    }
-
-    public String getDynamodbCredentialsCtorArguments()
-    {
-        return dynamodbCredentialsCtorArguments;
-    }
-
-    public String getDynamodbEndpoint()
-    {
-        return dynamodbEndpoint;
-    }
 
     public BenchmarkConfiguration(Configuration appconfig)
     {
@@ -146,30 +101,12 @@ public class BenchmarkConfiguration
         this.csvReportingInterval = metrics.getLong(CSV_INTERVAL, 1000 /*ms*/);
         this.csvDir = csv.containsKey(CSV_DIR) ? new File(csv.getString(CSV_DIR, System.getProperty("user.dir") /*default*/)) : null;
 
-        Configuration dynamodb = socialsensor.subset("dynamodb");
-        this.dynamodbWorkerThreads = dynamodb.getInt("workers", 25);
-        Configuration credentials = dynamodb.subset(CREDENTIALS);
-        this.dynamodbPrecreateTables = dynamodb.getBoolean("precreate-tables", Boolean.FALSE);
-        this.dynamodbTps = Math.max(1, dynamodb.getLong(TPS, 750 /*default*/));
-        this.dynamodbConsistentRead = dynamodb.containsKey(CONSISTENT_READ) ? dynamodb.getBoolean(CONSISTENT_READ)
-            : false;
-        this.dynamodbDataModel = dynamodb.containsKey("data-model") ? BackendDataModel.valueOf(dynamodb
-            .getString("data-model")) : null;
-        this.dynamodbCredentialsFqClassName = credentials.containsKey(CLASS_NAME) ? credentials.getString(CLASS_NAME)
-            : null;
-        this.dynamodbCredentialsCtorArguments = credentials.containsKey(CONSTRUCTOR_ARGS) ? credentials
-            .getString(CONSTRUCTOR_ARGS) : null;
-        this.dynamodbEndpoint = dynamodb.containsKey(ENDPOINT) ? dynamodb.getString(ENDPOINT) : null;
-        this.dynamodbTablePrefix = dynamodb.containsKey(TABLE_PREFIX) ? dynamodb.getString(TABLE_PREFIX) : Constants.DYNAMODB_TABLE_PREFIX.getDefaultValue();
-
-        Configuration titan = socialsensor.subset(TITAN); //TODO(amcp) move dynamodb ns into titan
-        bufferSize = titan.getInt(BUFFER_SIZE, GraphDatabaseConfiguration.BUFFER_SIZE.getDefaultValue());
-        blocksize = titan.getInt(IDS_BLOCKSIZE, GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getDefaultValue());
-        pageSize = titan.getInt(PAGE_SIZE, GraphDatabaseConfiguration.PAGE_SIZE.getDefaultValue());
-        customIds = titan.getBoolean(CUSTOM_IDS, false /*default*/);
-
-        final Configuration tupl = socialsensor.subset("tupl");
-        tuplMinCacheSize = tupl.getLong(TuplStoreManager.TUPL_MIN_CACHE_SIZE.getName(), TuplStoreManager.TUPL_MIN_CACHE_SIZE.getDefaultValue());
+        // JaunsGraph conf
+        Configuration janus = socialsensor.subset(JANUS);
+        bufferSize = janus.getInt(BUFFER_SIZE, GraphDatabaseConfiguration.BUFFER_SIZE.getDefaultValue());
+        blocksize = janus.getInt(IDS_BLOCKSIZE, GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getDefaultValue());
+        pageSize = janus.getInt(PAGE_SIZE, GraphDatabaseConfiguration.PAGE_SIZE.getDefaultValue());
+        customIds = janus.getBoolean(CUSTOM_IDS, false /*default*/);
 
         // database storage directory
         if (!socialsensor.containsKey(DATABASE_STORAGE_DIRECTORY))
@@ -239,8 +176,6 @@ public class BenchmarkConfiguration
             {
                 List<?> objects = socialsensor.getList(CACHE_PERCENTAGES);
                 cachePercentages = new ArrayList<Integer>(objects.size());
-                cacheValuesCount = null;
-                cacheIncrementFactor = null;
                 for (Object o : objects)
                 {
                     cachePercentages.add(Integer.valueOf(o.toString()));
@@ -255,8 +190,6 @@ public class BenchmarkConfiguration
         else
         {
             randomizedClustering = null;
-            cacheValuesCount = null;
-            cacheIncrementFactor = null;
             cachePercentages = null;
             actualCommunities = null;
         }
@@ -282,21 +215,6 @@ public class BenchmarkConfiguration
         return resultsPath;
     }
 
-    public long getDynamodbTps()
-    {
-        return dynamodbTps;
-    }
-
-    public boolean dynamodbConsistentRead()
-    {
-        return dynamodbConsistentRead;
-    }
-
-    public BackendDataModel getDynamodbDataModel()
-    {
-        return dynamodbDataModel;
-    }
-
     public List<BenchmarkType> getBenchmarkTypes()
     {
         return benchmarkTypes;
@@ -305,16 +223,6 @@ public class BenchmarkConfiguration
     public Boolean randomizedClustering()
     {
         return randomizedClustering;
-    }
-
-    public Integer getCacheValuesCount()
-    {
-        return cacheValuesCount;
-    }
-
-    public Double getCacheIncrementFactor()
-    {
-        return cacheIncrementFactor;
     }
 
     public List<Integer> getCachePercentages()
@@ -369,34 +277,19 @@ public class BenchmarkConfiguration
         return graphiteHostname;
     }
 
-    public int getTitanBufferSize()
+    public int getJanusBufferSize()
     {
         return bufferSize;
     }
 
-    public int getTitanIdsBlocksize()
+    public int getJanusIdsBlocksize()
     {
         return blocksize;
     }
 
-    public int getTitanPageSize()
+    public int getJanusPageSize()
     {
         return pageSize;
-    }
-
-    public int getDynamodbWorkerThreads()
-    {
-        return dynamodbWorkerThreads;
-    }
-
-    public boolean getDynamodbPrecreateTables()
-    {
-        return dynamodbPrecreateTables;
-    }
-
-    public String getDynamodbTablePrefix()
-    {
-        return dynamodbTablePrefix;
     }
 
     public boolean publishCsvMetrics()
@@ -411,10 +304,6 @@ public class BenchmarkConfiguration
 
     public boolean isCustomIds() {
         return customIds;
-    }
-
-    public long getTuplMinCacheSize() {
-        return tuplMinCacheSize;
     }
 
     public Random getRandom() {

@@ -98,7 +98,6 @@ public class GraphDatabaseBenchmark
 
     public void run()
     {
-        //MetricRegistry registry = MetricRegistry.name(klass, names)
         for (BenchmarkType type : config.getBenchmarkTypes())
         {
             runBenchmark(type);
@@ -154,7 +153,7 @@ public class GraphDatabaseBenchmark
         }
         catch (Throwable t)
         {
-            logger.fatal(t.getMessage());
+            logger.fatal(t.getMessage(), t);
             System.exit(1);
         }
         System.exit(0);

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>hbase.client.keytab.password</name>
+    <value>hbase-test</value>
+  </property>
+  <property>
+    <name>hbase.client.kerberos.principal</name>
+    <value>hbase-test@REALM.COM</value>
+  </property>
+  <property>
+    <name>hbase.client.hottable</name>
+    <value>janus-benchmark</value>
+  </property>
+</configuration>

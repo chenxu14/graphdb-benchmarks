@@ -7,14 +7,11 @@ import java.io.File;
  * 
  * @author sotbeis, sotbeis@iti.gr
  */
-public interface Insertion
-{
-
+public interface Insertion<T> {
     /**
      * Loads the data in each graph database
-     * 
      * @param datasetDir
+     * @return the generate random vertex id
      */
-    public void createGraph(File dataset, int scenarioNumber);
-
+    public void createGraph(File dataset);
 }

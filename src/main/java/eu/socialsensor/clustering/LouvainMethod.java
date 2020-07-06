@@ -24,10 +24,10 @@ public class LouvainMethod
     private List<Double> communityWeights;
     private boolean communityUpdate = false;
 
-    GraphDatabase<?,?,?,?> graphDatabase;
+    GraphDatabase graphDatabase;
     Cache cache;
 
-    public LouvainMethod(GraphDatabase<?,?,?,?> graphDatabase, int cachePercentage, Random random) throws ExecutionException
+    public LouvainMethod(GraphDatabase graphDatabase, int cachePercentage, Random random) throws ExecutionException
     {
         this.graphDatabase = graphDatabase;
         this.random = random;
@@ -37,8 +37,7 @@ public class LouvainMethod
 
     private void initialize()
     {
-        this.nodeCount = this.graphDatabase.getNodeCount();// this step takes a long
-                                                   // time on dynamodb.
+        this.nodeCount = this.graphDatabase.getNodeCount();
         this.graphWeightSum = this.graphDatabase.getGraphWeightSum() / 2;
 
         this.communityWeights = new ArrayList<Double>(this.nodeCount);

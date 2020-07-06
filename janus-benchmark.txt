@@ -25,3 +25,4 @@ g.V().has("nodeId", 13122).repeat(both().simplePath()).until(has('nodeId',29854)
 g.V().has("nodeId", 775).repeat(out('similar').simplePath()).until(has('nodeId', 990).and().filter {it.path().size() <= 6}).limit(1).path().by('nodeId')
 
 g.V().has("nodeId", 775).repeat(out("similar").simplePath()).until(loops().is(5)).emit(has("nodeId", 990)).has("nodeId", 990).limit(1).path().by("nodeId")
+

@@ -13,7 +13,8 @@ import java.util.Set;
 public enum GraphDatabaseType
 {
     JANUS_HBASE("Janus", "hbase", "jhb"),
-    NEO4J("Neo4j", null, "neo4j");
+    NEO4J("Neo4j", null, "neo4j"),
+	NEBULA("Nebula", null, "nebula");
 
     private final String backend;
     private final String api;

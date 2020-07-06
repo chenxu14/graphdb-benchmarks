@@ -10,7 +10,7 @@
         <Logger name="org.janusgraph.diskstorage.log.kcvs.KCVSLog" level="WARN"/>
         <Logger name="org.janusgraph.diskstorage.Backend" level="WARN"/>
         <Logger name="org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration" level="WARN"/>
-        <Logger name="eu.socialsensor.graphdatabases.JanusGraphDatabase" level="DEBUG"/>
+        <Logger name="eu.socialsensor.insert.NebulaMassiveInsertion" level="TRACE"/>
         <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>

@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
@@ -21,16 +20,13 @@ import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.apache.tinkerpop.gremlin.structure.Property;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.chen.janusgraph.client.JanusGraphClient;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.JanusGraphFactory;
 import org.janusgraph.diskstorage.BackendException;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
-
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Iterators;
-import com.meituan.janusgraph.client.JanusGraphClient;
-
-import eu.socialsensor.insert.Insertion;
 import eu.socialsensor.insert.JanusMassiveInsertion;
 import eu.socialsensor.insert.JanusSingleInsertion;
 import eu.socialsensor.main.BenchmarkConfiguration;
@@ -42,131 +38,59 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   private final JanusGraph graph;
   private final BenchmarkConfiguration config;
 
-  public JanusGraphDatabase(GraphDatabaseType type, BenchmarkConfiguration config, File dbStorageDirectory,
-      boolean batchLoading) {
-    super(type, dbStorageDirectory, config.getRandomNodeList(), config.getShortestPathMaxHops());
+  public JanusGraphDatabase(GraphDatabaseType type, BenchmarkConfiguration config, File dbStorageDirectory) {
+    super(type, dbStorageDirectory, config);
     this.config = config;
     if (!GraphDatabaseType.JANUS_FLAVORS.contains(type)) {
       throw new IllegalArgumentException(String.format("The graph database %s is not a Janus database.",
           type == null ? "null" : type.name()));
     }
     Properties props = new Properties();
-    props.put("graph.set-vertex-id", config.isCustomIds());
+    props.put("graph.set-vertex-id", "true");
+    boolean batchLoading = config.isBatch();
     props.put("storage.batch-loading", batchLoading);
     props.put("storage.transactions", !batchLoading);
-    props.put("storage.buffer-size", config.getJanusBufferSize());
+    props.put("storage.buffer-size", config.getBatchSize());
     props.put("storage.page-size", config.getJanusPageSize());
     props.put("storage.parallel-backend-ops", "true");
     props.put("ids.block-size", config.getJanusIdsBlocksize());
     props.put("query.force-index", "false");
-    // props.put("cluster.max-partitions", 1);
     graph = JanusGraphClient.getInstance("janus-benchmark", props);
-    // createSchema();
-  }
-
-//  private void createSchema() {
-//    final JanusGraphManagement mgmt = graph.openManagement();
-//    if (!mgmt.containsVertexLabel(NODE_LABEL)) {
-//      final VertexLabelMaker maker = mgmt.makeVertexLabel(NODE_LABEL);
-//      maker.make();
-//    }
-//    if (null == mgmt.getGraphIndex(NODE_ID)) {
-//      final PropertyKey key = mgmt.makePropertyKey(NODE_ID).dataType(Integer.class).make();
-//      mgmt.buildIndex(NODE_ID, Vertex.class).addKey(key).unique().buildCompositeIndex();
-//    }
-//    if (null == mgmt.getGraphIndex(COMMUNITY)) {
-//      final PropertyKey key = mgmt.makePropertyKey(COMMUNITY).dataType(Integer.class).make();
-//      mgmt.buildIndex(COMMUNITY, Vertex.class).addKey(key).buildCompositeIndex();
-//    }
-//    if (null == mgmt.getGraphIndex(NODE_COMMUNITY)) {
-//      final PropertyKey key = mgmt.makePropertyKey(NODE_COMMUNITY).dataType(Integer.class).make();
-//      mgmt.buildIndex(NODE_COMMUNITY, Vertex.class).addKey(key).buildCompositeIndex();
-//    }
-//    if (mgmt.getEdgeLabel(SIMILAR) == null) {
-//      mgmt.makeEdgeLabel(SIMILAR).multiplicity(Multiplicity.MULTI).directed().make();
-//    }
-//    mgmt.commit();
-//    graph.tx().commit();
-//    LOG.info("create schema successfully");
-//  }
-
-  @Override
-  public Vertex getOtherVertexFromEdge(Edge edge, Vertex oneVertex) {
-    return edge.inVertex().equals(oneVertex) ? edge.outVertex() : edge.inVertex();
   }
 
   @Override
-  public Vertex getSrcVertexFromEdge(Edge edge) {
-    return edge.outVertex();
-  }
-
-  @Override
-  public Vertex getDestVertexFromEdge(Edge edge) {
-    return edge.inVertex();
-  }
-
-  @Override
-  public Vertex getVertex(Integer i) {
-    final GraphTraversalSource g = graph.traversal();
-    final Vertex vertex = g.V().has(NODE_ID, i).next();
+  public Vertex getVertex(Integer id) {
+    long vertexId = ((StandardJanusGraph)graph).getIDManager().toVertexId(id);
+    final Vertex vertex = graph.traversal().V(vertexId).next();
     return vertex;
   }
 
-  @Override
-  public Iterator<Edge> getAllEdges() {
-    return graph.edges();
+  public void khopQuery() {
+    for (Integer id : config.getRandomNodes()) {
+      long vertexId = ((StandardJanusGraph)graph).getIDManager().toVertexId(id);
+      GraphTraversal<Vertex, Vertex> g = graph.traversal().V(vertexId);
+      for (int i = 0; i < config.getKpopStep(); i++) {
+        g = g.out(SIMILAR);
+      }
+      if (config.withProps()) {
+        g = g.values(NODE_ID);
+      }
+      int size = g.toSet().size();
+      LOG.trace("khop query, from vertex {}, step is {}, withProps is {}, result size is {}",
+          vertexId, config.getKpopStep(), config.withProps(), size);
+    }
   }
 
   @Override
-  public Iterator<Edge> getNeighborsOfVertex(Vertex v) {
-    return v.edges(Direction.BOTH, SIMILAR);
+  public void massiveModeLoading() {
+    JanusMassiveInsertion janusMassiveInsertion = new JanusMassiveInsertion((StandardJanusGraph)graph, type);
+    janusMassiveInsertion.createGraph(config.getDataset());
   }
 
   @Override
-  public boolean edgeIteratorHasNext(Iterator<Edge> it) {
-    return it.hasNext();
-  }
-
-  @Override
-  public Edge nextEdge(Iterator<Edge> it) {
-    return it.next();
-  }
-
-  @Override
-  public void cleanupEdgeIterator(Iterator<Edge> it) {
-    // NOOP
-  }
-
-  @Override
-  public Iterator<Vertex> getVertexIterator() {
-    return graph.traversal().V().hasLabel(NODE_LABEL).toStream().iterator();
-  }
-
-  @Override
-  public boolean vertexIteratorHasNext(Iterator<Vertex> it) {
-    return it.hasNext();
-  }
-
-  @Override
-  public Vertex nextVertex(Iterator<Vertex> it) {
-    return it.next();
-  }
-
-  @Override
-  public void cleanupVertexIterator(Iterator<Vertex> it) {
-    return; // NOOP - do nothing
-  }
-
-  @Override
-  public void massiveModeLoading(File dataPath) {
-    Insertion janusMassiveInsertion = JanusMassiveInsertion.create((StandardJanusGraph)graph, type, config.isCustomIds());
-    janusMassiveInsertion.createGraph(dataPath, 0 /* scenarioNumber */);
-  }
-
-  @Override
-  public void singleModeLoading(File dataPath, File resultsPath, int scenarioNumber) {
-    Insertion janusSingleInsertion = new JanusSingleInsertion((StandardJanusGraph)graph, type, resultsPath);
-    janusSingleInsertion.createGraph(dataPath, scenarioNumber);
+  public void singleModeLoading() {
+    JanusSingleInsertion janusSingleInsertion = new JanusSingleInsertion((StandardJanusGraph)graph, type);
+    janusSingleInsertion.createGraph(config.getDataset());
   }
 
   @Override
@@ -176,7 +100,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
 
   @Override
   public void delete() {
-    shutdown();
     try {
       JanusGraphFactory.drop(graph);
     } catch (BackendException e) {
@@ -186,14 +109,10 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   }
 
   @Override
-  public void shutdownMassiveGraph() {
-    shutdown();
-  }
-
-  @Override
   public void shortestPath(Vertex fromNode, Integer targetNode) {
     final GraphTraversalSource g = graph.traversal();
     final Stopwatch watch = Stopwatch.createStarted();
+    int maxHops = this.config.getShortestPathMaxHops();
     final DepthPredicate maxDepth = new DepthPredicate(maxHops);
     final Integer fromNodeId = fromNode.<Integer>value(NODE_ID);
     LOG.debug("finding path from {} to {} max hops {}", fromNodeId, targetNode, maxHops);
@@ -215,13 +134,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   }
 
   @Override
-  public int getNodeCount() {
-    final GraphTraversalSource g = graph.traversal();
-    final long nodeCount = g.V().count().toList().get(0);
-    return (int) nodeCount;
-  }
-
-  @Override
   public Set<Integer> getNeighborsIds(int nodeId) {
     final Vertex vertex = getVertex(nodeId);
     Set<Integer> neighbors = new HashSet<Integer>();
@@ -231,13 +143,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
       neighbors.add(neighborId);
     }
     return neighbors;
-  }
-
-  @Override
-  public double getNodeWeight(int nodeId) {
-    Vertex vertex = getVertex(nodeId);
-    double weight = getNodeOutDegree(vertex);
-    return weight;
   }
 
   public double getNodeInDegree(Vertex vertex) {
@@ -251,9 +156,11 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   @Override
   public void initCommunityProperty() {
     int communityCounter = 0;
-    List<Vertex> vertexs = graph.traversal().V().hasLabel(NODE_LABEL).toList();
-    LOG.info("init community property for janusGraph, vertex size is {}", vertexs.size());
-    for (Vertex v : vertexs) {
+    LOG.info("init community property for janusGraph, vertex size is {}", getNodeCount());
+    final GraphTraversalSource g = graph.traversal();
+    for (int id = 1; id <= getNodeCount(); id++) {
+      long vertexId = ((StandardJanusGraph)graph).getIDManager().toVertexId(id);    	
+      Vertex v = g.V(vertexId).next();
       v.property(NODE_COMMUNITY, communityCounter);
       v.property(COMMUNITY, communityCounter);
       communityCounter++;
@@ -295,22 +202,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   }
 
   @Override
-  public double getEdgesInsideCommunity(int vertexCommunity, int communityVertices) {
-    double edges = 0;
-    Set<Vertex> comVertices = graph.traversal().V().has(COMMUNITY, communityVertices).toSet();
-    for (Vertex vertex : graph.traversal().V().has(NODE_COMMUNITY, vertexCommunity).toList()) {
-      Iterator<Vertex> it = vertex.vertices(Direction.OUT, SIMILAR);
-      for (Vertex v; it.hasNext();) {
-        v = it.next();
-        if(comVertices.contains(v)) {
-          edges++;
-        }
-      }
-    }
-    return edges;
-  }
-
-  @Override
   public double getCommunityWeight(int community) {
     double communityWeight = 0;
     final List<Vertex> list = graph.traversal().V().has(COMMUNITY, community).toList();
@@ -324,15 +215,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
   }
 
   @Override
-  public double getNodeCommunityWeight(int nodeCommunity) {
-    double nodeCommunityWeight = 0;
-    for (Vertex vertex : graph.traversal().V().has(NODE_COMMUNITY, nodeCommunity).toList()) {
-      nodeCommunityWeight += getNodeOutDegree(vertex);
-    }
-    return nodeCommunityWeight;
-  }
-
-  @Override
   public void moveNode(int nodeCommunity, int toCommunity) {
     for (Vertex vertex : graph.traversal().V().has(NODE_COMMUNITY, nodeCommunity).toList()) {
       vertex.property(COMMUNITY, toCommunity);
@@ -341,17 +223,17 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
 
   @Override
   public double getGraphWeightSum() {
-    final Iterator<Edge> edges = graph.edges();
-    return (double) Iterators.size(edges);
+    return config.getEdgeTotal();
   }
 
   @Override
   public int reInitializeCommunities() {
     Map<Integer, Integer> initCommunities = new HashMap<Integer, Integer>();
     int communityCounter = 0;
-    Iterator<Vertex> it = graph.vertices();
-    for (Vertex v; it.hasNext();) {
-      v = it.next();
+    final GraphTraversalSource g = graph.traversal();
+    for (int id = 1; id <= getNodeCount(); id++) {
+      long vertexId = ((StandardJanusGraph)graph).getIDManager().toVertexId(id);    	
+      Vertex v = g.V(vertexId).next();
       int communityId = (Integer) v.property(COMMUNITY).value();
       if (!initCommunities.containsKey(communityId)) {
         initCommunities.put(communityId, communityCounter);
@@ -361,6 +243,9 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
       v.property(COMMUNITY, newCommunityId);
       v.property(NODE_COMMUNITY, newCommunityId);
     }
+    g.tx().commit();
+    LOG.info("reinit community property for janusGraph, vertex size is {}, new community Counter is {}",
+        getNodeCount(), communityCounter);
     return communityCounter;
   }
 
@@ -375,18 +260,6 @@ public class JanusGraphDatabase extends GraphDatabaseBase<Iterator<Vertex>, Iter
     Vertex vertex = graph.traversal().V().has(NODE_COMMUNITY, nodeCommunity).next();
     int community = (Integer) vertex.property(COMMUNITY).value();
     return community;
-  }
-
-  @Override
-  public int getCommunitySize(int community) {
-    Set<Integer> nodeCommunities = new HashSet<Integer>();
-    for (Vertex v : graph.traversal().V().has(COMMUNITY, community).toList()) {
-      int nodeCommunity = (Integer) v.property(NODE_COMMUNITY).value();
-      if (!nodeCommunities.contains(nodeCommunity)) {
-        nodeCommunities.add(nodeCommunity);
-      }
-    }
-    return nodeCommunities.size();
   }
 
   @Override

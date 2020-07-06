@@ -1,6 +1,5 @@
 package eu.socialsensor.insert;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,9 +23,9 @@ public class Neo4jSingleInsertion extends InsertionBase<Node>
 {
     private final GraphDatabaseService neo4jGraph;
 
-    public Neo4jSingleInsertion(GraphDatabaseService neo4jGraph, File resultsPath)
+    public Neo4jSingleInsertion(GraphDatabaseService neo4jGraph)
     {
-        super(GraphDatabaseType.NEO4J, resultsPath);
+        super(GraphDatabaseType.NEO4J);
         this.neo4jGraph = neo4jGraph;
     }
 
@@ -56,7 +55,7 @@ public class Neo4jSingleInsertion extends InsertionBase<Node>
     }
 
     @Override
-    public void relateNodes(Node src, Node dest)
+    public void relateNodes(Node src, Node dest, int edgeId)
     {
         try (final Transaction tx = neo4jGraph.beginTx())
         {

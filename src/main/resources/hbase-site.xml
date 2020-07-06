@@ -7,7 +7,7 @@
   </property>
   <property>
     <name>hbase.client.kerberos.principal</name>
-    <value>hbase-test@SANKUAI.COM</value>
+    <value>hbase-test@REALM.COM</value>
   </property>
   <property>
     <name>hbase.client.hottable</name>

@@ -1,0 +1,13 @@
+nebula-benchmark
+
+CREATE SPACE benchmark(partition_num=15, replica_factor=3);
+BALANCE LEADER;
+
+USE benchmark;
+
+CREATE TAG node(nodeId int, community int DEFAULT 0, nodeCommunity int DEFAULT 0);
+CREATE TAG INDEX nodeIdIndex on node(nodeId);
+CREATE TAG INDEX communityIndex on node(community);
+CREATE TAG INDEX nodeCommunityIndex on node(nodeCommunity);
+
+CREATE EDGE similar();

@@ -22,12 +22,12 @@ public final class Neo4jMassiveInsertion extends InsertionBase<Long>
 
     public Neo4jMassiveInsertion(BatchInserter inserter)
     {
-        super(GraphDatabaseType.NEO4J, null /* resultsPath */);
+        super(GraphDatabaseType.NEO4J);
         this.inserter = inserter;
     }
 
     @Override
-    protected Long getOrCreate(String value)
+    public Long getOrCreate(String value)
     {
         Long id = cache.get(Long.valueOf(value));
         if (id == null)
@@ -40,7 +40,7 @@ public final class Neo4jMassiveInsertion extends InsertionBase<Long>
     }
 
     @Override
-    protected void relateNodes(Long src, Long dest)
+    public void relateNodes(Long src, Long dest, int edgeId)
     {
         inserter.createRelationship(src, dest, Neo4jGraphDatabase.RelTypes.SIMILAR, null /*properties*/);
     }

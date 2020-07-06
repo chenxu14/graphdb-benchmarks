@@ -9,311 +9,279 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.commons.configuration.Configuration;
-import org.apache.commons.math3.util.CombinatoricsUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
-import com.google.common.primitives.Ints;
-import eu.socialsensor.dataset.DatasetFactory;
 
 /**
- * 
- * @author Alexander Patrikalakis
- *
+ * Benchmark Configurations
  */
-public class BenchmarkConfiguration
-{
-    // Janus specific configuration
-    private static final String JANUS = "janus";
-    private static final String BUFFER_SIZE = GraphDatabaseConfiguration.BUFFER_SIZE.getName();
-    private static final String IDS_BLOCKSIZE = GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getName();
-    private static final String PAGE_SIZE = GraphDatabaseConfiguration.PAGE_SIZE.getName();
-    public static final String CSV_INTERVAL = GraphDatabaseConfiguration.METRICS_CSV_INTERVAL.getName();
-    public static final String CSV = GraphDatabaseConfiguration.METRICS_CSV_NS.getName();
-    private static final String CSV_DIR = GraphDatabaseConfiguration.METRICS_CSV_DIR.getName();
-    public static final String GRAPHITE = GraphDatabaseConfiguration.METRICS_GRAPHITE_NS.getName();
-    private static final String GRAPHITE_HOSTNAME = GraphDatabaseConfiguration.GRAPHITE_HOST.getName();
-    private static final String CUSTOM_IDS = "custom-ids";
+public class BenchmarkConfiguration {
+  private static final Logger LOG = LogManager.getLogger();
+  // Janus specific configuration
+  private static final String JANUS = "janus";
+  private static final String IDS_BLOCKSIZE = GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getName();
+  private static final String PAGE_SIZE = GraphDatabaseConfiguration.PAGE_SIZE.getName();
+  public static final String GRAPHITE = GraphDatabaseConfiguration.METRICS_GRAPHITE_NS.getName();
+  private static final String BATCH = GraphDatabaseConfiguration.STORAGE_BATCH.getName();
+  private final int blocksize;
+  private final int pageSize;
+  private final boolean batch;
 
-    // benchmark configuration
-    private static final String DATASET = "dataset";
-    private static final String DATABASE_STORAGE_DIRECTORY = "database-storage-directory";
-    private static final String ACTUAL_COMMUNITIES = "actual-communities";
-    private static final String RANDOMIZE_CLUSTERING = "randomize-clustering";
-    private static final String CACHE_PERCENTAGES = "cache-percentages";
-    private static final String PERMUTE_BENCHMARKS = "permute-benchmarks";
-    private static final String RANDOM_NODES = "shortest-path-random-nodes";
-    private static final String RANDOM_SEED = "random-seed";
-    private static final String MAX_HOPS = "shortest-path-max-hops";
-    
-    private static final Set<String> metricsReporters = new HashSet<String>();
-    static {
-        metricsReporters.add(CSV);
-        metricsReporters.add(GRAPHITE);
+  // nebula specific configuration
+  private final String nebulaHost;
+  private final int nebulaPort;
+  private final String nebulaUser;
+  private final String nebulaPwd;
+  private final String nebulaSpace;
+  
+  // benchmark configuration
+  private static final String DATASET = "dataset";
+  private static final String DATABASE_STORAGE_DIRECTORY = "database-storage-directory";
+  private static final String RANDOM_NODES_INTERVAL = "random-nodes-interval";
+  private static final String RANDOM_SEED = "random-seed";
+  private static final String MAX_HOPS = "max-hops";
+  private final File dataset;
+  private final List<BenchmarkType> benchmarkTypes;
+  private final SortedSet<GraphDatabaseType> selectedDatabases;
+  private final File resultsPath;
+  private final int numRandomNodesInterval;
+  private final int batchSize;
+  private final File dbStorageDirectory;
+  private int shortestPathMaxHops;
+  private final Random random;
+  private final Set<Integer> randomNodes;
+  private int vertexTotal;
+  private int edgeTotal;
+  private int kpopStep = 1;
+  private boolean withProps = true;
+
+  // clustering
+  private static final String ACTUAL_COMMUNITIES = "actual-communities";
+  private static final String RANDOMIZE_CLUSTERING = "randomize";
+  private static final String CACHE_PERCENTAGES = "cache-percentages";
+  private final Boolean randomizedClustering;
+  private final List<Integer> cachePercentages;
+  private final File actualCommunities;
+
+  public BenchmarkConfiguration(Configuration appconfig) {
+    if (appconfig == null) {
+      throw new IllegalArgumentException("appconfig may not be null");
     }
 
-    private final File dataset;
-    private final List<BenchmarkType> benchmarkTypes;
-    private final SortedSet<GraphDatabaseType> selectedDatabases;
-    private final File resultsPath;
+    Configuration graph = appconfig.subset("graph");
+    Configuration benchmark = graph.subset("benchmark");
 
-    // storage directory
-    private final File dbStorageDirectory;
+    dbStorageDirectory = new File(benchmark.getString(DATABASE_STORAGE_DIRECTORY, "storage"));
 
-    // metrics (optional)
-    private final long csvReportingInterval;
-    private final File csvDir;
-    private final String graphiteHostname;
-    private final long graphiteReportingInterval;
+    // JaunsGraph conf
+    Configuration janus = benchmark.subset(JANUS);
+    blocksize = janus.getInt(IDS_BLOCKSIZE, GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getDefaultValue());
+    pageSize = janus.getInt(PAGE_SIZE, GraphDatabaseConfiguration.PAGE_SIZE.getDefaultValue());
+    batch = janus.getBoolean(BATCH, GraphDatabaseConfiguration.STORAGE_BATCH.getDefaultValue());
 
-    // shortest path
-    private final int numShortestPathRandomNodes;
+    // nebula conf
+    Configuration nebula = benchmark.subset("nebula");
+    nebulaHost = nebula.getString("host");
+    nebulaPort = nebula.getInt("port", 3699);
+    nebulaUser = nebula.getString("user", "root");
+    nebulaPwd = nebula.getString("password", "nebula");
+    nebulaSpace = nebula.getString("space");
 
-    // clustering
-    private final Boolean randomizedClustering;
-    private final List<Integer> cachePercentages;
-    private final File actualCommunities;
-    private final boolean permuteBenchmarks;
-    private final int scenarios;
-    private final int bufferSize;
-    private final int blocksize;
-    private final int pageSize;
-    private final boolean customIds;
-    private final int shortestPathMaxHops;
-    private final Random random;
+    // load the dataset
+    random = new Random(benchmark.getInt(RANDOM_SEED, 17));
+    numRandomNodesInterval = benchmark.getInteger(RANDOM_NODES_INTERVAL, 1000);
+    batchSize = benchmark.getInt("batchSize", 100);
+    String fileName = benchmark.getString(DATASET);
+    dataset = validateReadableFile(fileName, DATASET);
+    randomNodes = new HashSet<>();
+    generateRandomNodes();
 
-    public BenchmarkConfiguration(Configuration appconfig)
-    {
-        if (appconfig == null)
-        {
-            throw new IllegalArgumentException("appconfig may not be null");
+    List<?> benchmarkList = benchmark.getList("testcase");
+    benchmarkTypes = new ArrayList<BenchmarkType>();
+    for (Object str : benchmarkList) {
+      benchmarkTypes.add(BenchmarkType.valueOf(str.toString()));
+    }
+
+    selectedDatabases = new TreeSet<GraphDatabaseType>();
+    for (Object database : benchmark.getList("databases")) {
+      if (!GraphDatabaseType.STRING_REP_MAP.keySet().contains(database.toString())) {
+        throw new IllegalArgumentException(
+            String.format("selected database %s not supported", database.toString()));
+      }
+      selectedDatabases.add(GraphDatabaseType.STRING_REP_MAP.get(database));
+    }
+
+    resultsPath = new File(System.getProperty("user.dir"), benchmark.getString("results-path", "results"));
+    if (!resultsPath.exists() && !resultsPath.mkdirs()) {
+      throw new IllegalArgumentException("unable to create results directory");
+    }
+    if (!resultsPath.canWrite()) {
+      throw new IllegalArgumentException("unable to write to results directory");
+    }
+
+    if (this.benchmarkTypes.contains(BenchmarkType.KHOP)) {
+      Configuration khop = benchmark.subset("khop");
+      this.kpopStep = khop.getInt("step");
+      this.withProps = khop.getBoolean("with-props");
+    }
+
+    if (this.benchmarkTypes.contains(BenchmarkType.FIND_SHORTEST_PATH)) {
+      Configuration shortestpath = benchmark.subset("shortestpath");
+      shortestPathMaxHops = shortestpath.getInteger(MAX_HOPS, 5);	
+    }
+
+    if (this.benchmarkTypes.contains(BenchmarkType.CLUSTERING)) {
+      Configuration clustering = benchmark.subset("clustering");
+      if (!clustering.containsKey(RANDOMIZE_CLUSTERING)) {
+        throw new IllegalArgumentException("the CW benchmark requires randomize-clustering bool in config");
+      }
+      randomizedClustering = clustering.getBoolean(RANDOMIZE_CLUSTERING);
+
+      if (!clustering.containsKey(ACTUAL_COMMUNITIES)) {
+        throw new IllegalArgumentException("the CW benchmark requires a file with actual communities");
+      }
+      actualCommunities = new File(clustering.getString(ACTUAL_COMMUNITIES));
+
+      final boolean notGenerating = clustering.containsKey(CACHE_PERCENTAGES);
+      if (notGenerating) {
+        List<?> objects = clustering.getList(CACHE_PERCENTAGES);
+        cachePercentages = new ArrayList<Integer>(objects.size());
+        for (Object o : objects) {
+          cachePercentages.add(Integer.valueOf(o.toString()));
         }
-
-        Configuration eu = appconfig.subset("eu");
-        Configuration socialsensor = eu.subset("socialsensor");
-        
-        //metrics
-        final Configuration metrics = socialsensor.subset(GraphDatabaseConfiguration.METRICS_NS.getName());
-
-        final Configuration graphite = metrics.subset(GRAPHITE);
-        this.graphiteHostname = graphite.getString(GRAPHITE_HOSTNAME, null);
-        this.graphiteReportingInterval = graphite.getLong(GraphDatabaseConfiguration.GRAPHITE_INTERVAL.getName(), 1000 /*default 1sec*/);
-
-        final Configuration csv = metrics.subset(CSV);
-        this.csvReportingInterval = metrics.getLong(CSV_INTERVAL, 1000 /*ms*/);
-        this.csvDir = csv.containsKey(CSV_DIR) ? new File(csv.getString(CSV_DIR, System.getProperty("user.dir") /*default*/)) : null;
-
-        // JaunsGraph conf
-        Configuration janus = socialsensor.subset(JANUS);
-        bufferSize = janus.getInt(BUFFER_SIZE, GraphDatabaseConfiguration.BUFFER_SIZE.getDefaultValue());
-        blocksize = janus.getInt(IDS_BLOCKSIZE, GraphDatabaseConfiguration.IDS_BLOCK_SIZE.getDefaultValue());
-        pageSize = janus.getInt(PAGE_SIZE, GraphDatabaseConfiguration.PAGE_SIZE.getDefaultValue());
-        customIds = janus.getBoolean(CUSTOM_IDS, false /*default*/);
-
-        // database storage directory
-        if (!socialsensor.containsKey(DATABASE_STORAGE_DIRECTORY))
-        {
-            throw new IllegalArgumentException("configuration must specify database-storage-directory");
-        }
-        dbStorageDirectory = new File(socialsensor.getString(DATABASE_STORAGE_DIRECTORY));
-        dataset = validateReadableFile(socialsensor.getString(DATASET), DATASET);
-
-        // load the dataset
-        random = new Random(socialsensor.getInt(RANDOM_SEED, 17 /*default*/));
-        numShortestPathRandomNodes = socialsensor.getInteger(RANDOM_NODES, new Integer(101));
-        shortestPathMaxHops = socialsensor.getInteger(MAX_HOPS, 5);
-        DatasetFactory.getInstance().createAndGetDataset(dataset, random, numShortestPathRandomNodes);
-
-        if (!socialsensor.containsKey(PERMUTE_BENCHMARKS))
-        {
-            throw new IllegalArgumentException("configuration must set permute-benchmarks to true or false");
-        }
-        permuteBenchmarks = socialsensor.getBoolean(PERMUTE_BENCHMARKS);
-
-        List<?> benchmarkList = socialsensor.getList("benchmarks");
-        benchmarkTypes = new ArrayList<BenchmarkType>();
-        for (Object str : benchmarkList)
-        {
-            benchmarkTypes.add(BenchmarkType.valueOf(str.toString()));
-        }
-
-        selectedDatabases = new TreeSet<GraphDatabaseType>();
-        for (Object database : socialsensor.getList("databases"))
-        {
-            if (!GraphDatabaseType.STRING_REP_MAP.keySet().contains(database.toString()))
-            {
-                throw new IllegalArgumentException(String.format("selected database %s not supported",
-                    database.toString()));
-            }
-            selectedDatabases.add(GraphDatabaseType.STRING_REP_MAP.get(database));
-        }
-        scenarios = permuteBenchmarks ? Ints.checkedCast(CombinatoricsUtils.factorial(selectedDatabases.size())) : 1;
-
-        resultsPath = new File(System.getProperty("user.dir"), socialsensor.getString("results-path"));
-        if (!resultsPath.exists() && !resultsPath.mkdirs())
-        {
-            throw new IllegalArgumentException("unable to create results directory");
-        }
-        if (!resultsPath.canWrite())
-        {
-            throw new IllegalArgumentException("unable to write to results directory");
-        }
-
-        if (this.benchmarkTypes.contains(BenchmarkType.CLUSTERING))
-        {
-            if (!socialsensor.containsKey(RANDOMIZE_CLUSTERING))
-            {
-                throw new IllegalArgumentException("the CW benchmark requires randomize-clustering bool in config");
-            }
-            randomizedClustering = socialsensor.getBoolean(RANDOMIZE_CLUSTERING);
-
-            if (!socialsensor.containsKey(ACTUAL_COMMUNITIES))
-            {
-                throw new IllegalArgumentException("the CW benchmark requires a file with actual communities");
-            }
-            actualCommunities = validateReadableFile(socialsensor.getString(ACTUAL_COMMUNITIES), ACTUAL_COMMUNITIES);
-
-            final boolean notGenerating = socialsensor.containsKey(CACHE_PERCENTAGES);
-            if (notGenerating)
-            {
-                List<?> objects = socialsensor.getList(CACHE_PERCENTAGES);
-                cachePercentages = new ArrayList<Integer>(objects.size());
-                for (Object o : objects)
-                {
-                    cachePercentages.add(Integer.valueOf(o.toString()));
-                }
-            }
-            else
-            {
-                throw new IllegalArgumentException(
-                    "when doing CW benchmark, must provide cache-percentages");
-            }
-        }
-        else
-        {
-            randomizedClustering = null;
-            cachePercentages = null;
-            actualCommunities = null;
-        }
+      } else {
+        throw new IllegalArgumentException("when doing CW benchmark, must provide cache-percentages");
+      }
+    } else {
+      randomizedClustering = null;
+      cachePercentages = null;
+      actualCommunities = null;
     }
+  }
 
-    public File getDataset()
-    {
-        return dataset;
+  private File validateReadableFile(String fileName, String fileType) {
+    if (fileName == null) {
+      throw new IllegalArgumentException("configuration must specify dataset");
     }
+    String[] graphInfo = fileName.substring(fileName.lastIndexOf(".") + 1).split("_");
+    if (graphInfo.length != 2) {
+       throw new IllegalArgumentException("dataset file must suffix with .vertexNum_edgeNum");	
+    }
+    vertexTotal = Integer.parseInt(graphInfo[0]);
+    edgeTotal = Integer.parseInt(graphInfo[1]);
+    LOG.info("target dataset with {} vertex and {} edges.", vertexTotal, edgeTotal);
+    File file = new File(fileName);
+    if (!file.exists()) {
+      throw new IllegalArgumentException(String.format("the %s does not exist", fileType));
+    }
+    if (!(file.isFile() && file.canRead())) {
+      throw new IllegalArgumentException(
+          String.format("the %s must be a file that this user can read", fileType));
+    }
+    return file;
+  }
 
-    public SortedSet<GraphDatabaseType> getSelectedDatabases()
-    {
-        return selectedDatabases;
+  private void generateRandomNodes() {
+    for (int i = 1; i <= vertexTotal; i += numRandomNodesInterval) {
+      randomNodes.add(i);
     }
+    LOG.info("generate {} random nodes from {}.", randomNodes.size(), vertexTotal);
+  }
 
-    public File getDbStorageDirectory()
-    {
-        return dbStorageDirectory;
-    }
+  public File getDataset() {
+    return dataset;
+  }
 
-    public File getResultsPath()
-    {
-        return resultsPath;
-    }
+  public SortedSet<GraphDatabaseType> getSelectedDatabases() {
+    return selectedDatabases;
+  }
 
-    public List<BenchmarkType> getBenchmarkTypes()
-    {
-        return benchmarkTypes;
-    }
+  public File getDbStorageDirectory() {
+    return dbStorageDirectory;
+  }
 
-    public Boolean randomizedClustering()
-    {
-        return randomizedClustering;
-    }
+  public File getResultsPath() {
+    return resultsPath;
+  }
 
-    public List<Integer> getCachePercentages()
-    {
-        return cachePercentages;
-    }
+  public List<BenchmarkType> getBenchmarkTypes() {
+    return benchmarkTypes;
+  }
 
-    public File getActualCommunitiesFile()
-    {
-        return actualCommunities;
-    }
+  public Boolean randomizedClustering() {
+    return randomizedClustering;
+  }
 
-    public boolean permuteBenchmarks()
-    {
-        return permuteBenchmarks;
-    }
+  public List<Integer> getCachePercentages() {
+    return cachePercentages;
+  }
 
-    public int getScenarios()
-    {
-        return scenarios;
-    }
+  public File getActualCommunitiesFile() {
+    return actualCommunities;
+  }
 
-    private static final File validateReadableFile(String fileName, String fileType) {
-        File file = new File(fileName);
-        if (!file.exists()) {
-            throw new IllegalArgumentException(String.format("the %s does not exist", fileType));
-        }
+  public int getBatchSize() {
+    return batchSize;
+  }
 
-        if (!(file.isFile() && file.canRead())) {
-            throw new IllegalArgumentException(String.format("the %s must be a file that this user can read", fileType));
-        }
-        return file;
-    }
+  public int getJanusIdsBlocksize() {
+    return blocksize;
+  }
 
-    public long getCsvReportingInterval()
-    {
-        return csvReportingInterval;
-    }
+  public int getJanusPageSize() {
+    return pageSize;
+  }
 
-    public long getGraphiteReportingInterval()
-    {
-        return graphiteReportingInterval;
-    }
+  public boolean isBatch() {
+    return this.batch;
+  }
 
-    public File getCsvDir()
-    {
-        return csvDir;
-    }
+  public Random getRandom() {
+    return random;
+  }
 
-    public String getGraphiteHostname()
-    {
-        return graphiteHostname;
-    }
+  public int getShortestPathMaxHops() {
+    return shortestPathMaxHops;
+  }
 
-    public int getJanusBufferSize()
-    {
-        return bufferSize;
-    }
+  public Set<Integer> getRandomNodes() {
+    return randomNodes;
+  }
 
-    public int getJanusIdsBlocksize()
-    {
-        return blocksize;
-    }
+  public int getVertexTotal() {
+    return this.vertexTotal;
+  }
 
-    public int getJanusPageSize()
-    {
-        return pageSize;
-    }
+  public int getEdgeTotal() {
+    return this.edgeTotal;
+  }
 
-    public boolean publishCsvMetrics()
-    {
-        return csvDir != null;
-    }
+  public int getKpopStep() {
+    return this.kpopStep;
+  }
 
-    public boolean publishGraphiteMetrics()
-    {
-        return graphiteHostname != null && !graphiteHostname.isEmpty();
-    }
+  public boolean withProps() {
+    return this.withProps;
+  }
 
-    public boolean isCustomIds() {
-        return customIds;
-    }
+  public String getNebulaHost() {
+    return this.nebulaHost;
+  }
 
-    public Random getRandom() {
-        return random;
-    }
-    public List<Integer> getRandomNodeList() {
-        return DatasetFactory.getInstance().getDataset(this.dataset).getRandomNodes();
-    }
+  public int getNebulaPort() {
+    return this.nebulaPort;
+  }
 
-    public int getShortestPathMaxHops() {
-        return shortestPathMaxHops;
-    }
+  public String getNebulaUser() {
+    return this.nebulaUser;
+  }
+
+  public String getNebulaPwd() {
+    return this.nebulaPwd;
+  }
+
+  public String getNebulaSpace() {
+    return this.nebulaSpace;
+  }
 }

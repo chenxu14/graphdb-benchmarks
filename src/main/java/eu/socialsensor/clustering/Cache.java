@@ -36,7 +36,7 @@ public class Cache
     LoadingCache<Integer, Integer> nodeToCommunityMap; // key=nodeId
                                                        // value=communityId
 
-    public Cache(final GraphDatabase<?,?,?,?> graphDatabase, int cachePercentage, int nodeCount) throws ExecutionException
+    public Cache(final GraphDatabase graphDatabase, int cachePercentage, int nodeCount) throws ExecutionException
     {
         final int cacheSize = Math.max(0, Math.min(nodeCount,
             Math.round(((float) cachePercentage) / 100.0f * nodeCount)));
